@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 export TAG=monolith
-
-git submodule update --init
+# Update submodules
+if git submodule update --init; then
+  echo All submodules have been updated
+else
+  echo Cannot update submodules
+  exit 1
+fi
 
 # Submodules
 declare -a repos=(
@@ -15,7 +20,11 @@ declare -a repos=(
 )
 
 for repo in "${repos[@]}"; do
-    git -C $repo checkout develop
-    git -C $repo pull origin develop --rebase
-    $repo/gradlew -p $repo clean dockerBuild
+  # Checkout to develop, pull and build docker images
+  if git -C $repo checkout develop && git -C $repo pull origin develop --rebase && $repo/gradlew -p $repo clean dockerBuild; then
+    echo All projects have been built successfully
+  else
+    echo Cannot build project $repo
+    exit 1
+  fi
 done
