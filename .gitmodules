@@ -1,0 +1,18 @@
+[submodule "notary"]
+	path = notary
+	url = https://github.com/d3ledger/notary.git
+[submodule "d3-btc"]
+	path = d3-btc
+	url = https://github.com/d3ledger/d3-btc.git
+[submodule "d3-eth"]
+	path = d3-eth
+	url = https://github.com/d3ledger/d3-eth.git
+[submodule "business-rules"]
+	path = business-rules
+	url = https://github.com/d3ledger/business-rules.git
+[submodule "report-system"]
+	path = report-system
+	url = https://github.com/d3ledger/report-system.git
+[submodule "chain-adapter"]
+	path = chain-adapter
+	url = https://github.com/soramitsu/chain-adapter.git

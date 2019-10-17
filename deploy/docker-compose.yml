@@ -1,0 +1,218 @@
+version: '3.5'
+
+services:
+  d3-iroha:
+    image: hyperledger/iroha:1.1.0
+    container_name: d3-iroha
+    depends_on:
+      - d3-iroha-postgres
+    tty: true
+    environment:
+      - KEY=keys/node0
+    entrypoint:
+      - /opt/iroha_data/entrypoint.sh
+    volumes:
+      - iroha_block_store:/tmp/block_store
+      - ../deploy/iroha/:/opt/iroha_data
+    networks:
+      - d3-network
+
+  d3-iroha-postgres:
+    image: postgres:9.5
+    container_name: d3-iroha-postgres
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_PASSWORD=mysecretpassword
+    volumes:
+      - /var/lib/postgresql/data
+    networks:
+      - d3-network
+
+  # bitcoin
+  d3-btc-node0:
+    image: kylemanna/bitcoind:latest
+    container_name: d3-btc-node0
+    volumes:
+      - ../deploy/bitcoin/regtest/bitcoin.conf:/bitcoin/.bitcoin/bitcoin.conf
+    entrypoint:
+      - bitcoind
+      - -deprecatedrpc=generate
+    networks:
+      - d3-network
+
+  d3-rmq:
+    image: rabbitmq:3-management
+    container_name: d3-rmq
+    ports:
+      - 5672:5672
+    networks:
+      - d3-network
+
+  d3-chain-adapter:
+    image: soramitsu/chain-adapter:monolith
+    container_name: d3-chain-adapter
+    restart: on-failure
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    depends_on:
+      - d3-iroha
+      - d3-rmq
+    networks:
+      - d3-network
+
+  d3-registration:
+    image: d3-deploy/notary-registration:monolith
+    container_name: d3-registration
+    restart: on-failure
+    ports:
+      - 8085:8085
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    networks:
+      - d3-network
+
+  data-collector:
+    image: d3-deploy/data-collector:monolith
+    container_name: "data-collector"
+    restart: on-failure
+    ports:
+      - 8087:8080
+    depends_on:
+      - dc-postgres
+      - d3-rmq
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    environment:
+      POSTGRES_HOST: dc-postgres
+      POSTGRES_DATABASE: postgres
+      SPRING_RABBITMQ_HOST: d3-rmq
+      IROHA_HOST: d3-iroha
+      IROHA_PORT: 50051
+      SPRING_DATASOURCE_USERNAME: test
+      SPRING_DATASOURCE_PASSWORD: test
+    networks:
+      - d3-network
+
+  report-service:
+    image: d3-deploy/report-service:monolith
+    container_name: "report-service"
+    restart: on-failure
+    ports:
+      - 8090:8090
+    depends_on:
+      - data-collector
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    environment:
+      POSTGRES_HOST: dc-postgres
+      POSTGRES_DATABASE: postgres
+      SPRING_DATASOURCE_USERNAME: test
+      SPRING_DATASOURCE_PASSWORD: test
+    networks:
+      - d3-network
+
+  dc-postgres:
+    image: postgres
+    container_name: "dc-postgres"
+    environment:
+      POSTGRES_PASSWORD: test
+      POSTGRES_USER: test
+    networks:
+      - d3-network
+
+  d3-brvs-mongodb:
+    image: mongo:4.0.6
+    container_name: d3-brvs-mongodb
+    environment:
+      - MONGO_DATA_DIR=/data/brvs/db
+      - MONGO_LOG_DIR=/data/brvs/logs
+    volumes:
+      - ../deploy/data/db:/data/brvs/db
+      - ../deploy/data/logs:/data/brvs/logs
+    ports:
+      - 27017:27017
+    command: mongod --smallfiles
+    networks:
+      - d3-network
+
+  d3-brvs:
+    image: brvs-deploy/brvs-core:monolith
+    container_name: d3-brvs
+    ports:
+      - 8083:8080
+    depends_on:
+      - d3-brvs-mongodb
+      - d3-rmq
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    environment:
+      CREDENTIAL_ACCOUNTID: d3@brvs
+      CREDENTIAL_PUBKEY: b9679bbf526a1c936cd1144b56a370d376fa8246b248cd72f952b45a2f20bdad
+      CREDENTIAL_PRIVKEY: 56a3c52cd039d9b73a1720052600a20962350b1ea169b4783cefbf87ed99406a
+      BILLING_URL: http://data-collector:8080/cache/get/billing
+      BILLING_ASSET_PRECISION_URL: http://data-collector:8080/iroha/asset/precision/
+    volumes:
+      - ../configs/brvs/keys:/config/keys
+    networks:
+      - d3-network
+    restart: always
+
+  d3-btc-registration:
+    image: d3-deploy/btc-registration:monolith
+    container_name: d3-btc-registration
+    restart: on-failure
+    ports:
+      - 8086:8086
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    networks:
+      - d3-network
+
+  d3-btc-dw-bridge:
+    image: d3-deploy/btc-dw-bridge:monolith
+    container_name: d3-btc-dw-bridge
+    restart: on-failure
+    ports:
+      - 7074:7074
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    volumes:
+      - ../deploy/bitcoin:/deploy/bitcoin
+    depends_on:
+      - d3-btc-node0
+      - d3-btc-address-generation
+      - d3-btc-registration
+    networks:
+      - d3-network
+
+  d3-btc-address-generation:
+    image: d3-deploy/btc-address-generation:monolith
+    container_name: d3-btc-address-generation
+    restart: on-failure
+    ports:
+      - 7071:7071
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    volumes:
+      - ../deploy/bitcoin:/deploy/bitcoin
+    networks:
+      - d3-network
+
+  # bitcoin testing endpoint. don't use in production
+  d3-btc-testing:
+    image: d3-deploy/btc-testing-endpoints:monolith
+    container_name: d3-btc-testing
+    restart: on-failure
+    ports:
+      - 18981:18981
+    env_file:
+      - ../deploy/.env-default-jvm-options
+    networks:
+      - d3-network
+
+volumes:
+  iroha_block_store:
+
+networks:
+  d3-network:
