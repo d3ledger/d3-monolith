@@ -16,3 +16,6 @@
 [submodule "chain-adapter"]
 	path = chain-adapter
 	url = https://github.com/soramitsu/chain-adapter.git
+[submodule "back-office"]
+	path = back-office
+	url = https://github.com/d3ledger/back-office.git

@@ -29,6 +29,23 @@ services:
     networks:
       - d3-network
 
+  grpcwebproxy:
+    build:
+      context: grpcwebproxy/
+    container_name: d3-grpcwebproxy
+    depends_on:
+      - d3-iroha
+    entrypoint:
+      - grpcwebproxy
+      - --backend_addr=d3-iroha:50051
+      - --run_tls_server=false
+      - --allow_all_origins=true
+    networks:
+      - d3-network
+    ports:
+      - 8081:8080
+      - 8443:8443
+
   # bitcoin
   d3-btc-node0:
     image: kylemanna/bitcoind:latest
