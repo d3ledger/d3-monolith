@@ -3,4 +3,4 @@
 #do
 #done
 sleep 30
-irohad --genesis_block genesis.block --config config.docker --keypair_name $KEY --overwrite-ledger
+irohad --genesis_block genesis.copy.block --config config.docker --keypair_name $KEY --overwrite-ledger
