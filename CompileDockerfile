@@ -1,0 +1,4 @@
+FROM openjdk:8-jdk-alpine3.9
+WORKDIR /build
+COPY compile.sh /build/compile.sh
+RUN sh compile.sh

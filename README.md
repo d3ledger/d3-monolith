@@ -1,11 +1,10 @@
 # D3-monolith
 The D3-monolith project is here to simplify the D3 project build and run processes.
 ## Prerequisites
-1) JDK 1.8 is installed. This is crucial, since newer versions have bad backward compatibility.
-2) Docker is installed
-3) Yarn and nodejs are installed
-4) You have `sudo` permissions
-5) The following routing is written in `etc/hosts`:
+1) Docker is installed
+2) Yarn and nodejs are installed
+3) You have `sudo` permissions
+4) The following routing is written in `etc/hosts`:
 ```
 127.0.0.1 d3-iroha
 127.0.0.1 d3-iroha-postgres
